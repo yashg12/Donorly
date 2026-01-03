@@ -1,16 +1,23 @@
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL } from '../utils/api';
+import { Paperclip } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 export default function ChatAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [attachedPreviewUrl, setAttachedPreviewUrl] = useState(null);
+  const [attachedImageBase64, setAttachedImageBase64] = useState(null);
+  const [attachedMimeType, setAttachedMimeType] = useState(null);
+  const [attachedFileName, setAttachedFileName] = useState(null);
   const [messages, setMessages] = useState([
     { text: 'Hi! How can I help you donate today?', sender: 'bot' },
   ]);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
   
   // Get API URL from environment or use default
 
@@ -51,6 +58,40 @@ export default function ChatAssistant() {
 
   const toggleOpen = () => setIsOpen((prev) => !prev);
 
+  const handleAttachmentClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const looksLikePdf = file.name?.toLowerCase?.().endsWith('.pdf');
+    const effectiveMimeType = file.type || (looksLikePdf ? 'application/pdf' : '');
+    const isImage = effectiveMimeType.startsWith('image/');
+    const isPdf = effectiveMimeType === 'application/pdf';
+    if (!isImage && !isPdf) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === 'string' ? reader.result : null;
+      if (!dataUrl) return;
+
+      setAttachedFileName(file.name || null);
+      setAttachedMimeType(effectiveMimeType);
+
+      if (isImage) {
+        setAttachedPreviewUrl(dataUrl);
+      } else {
+        setAttachedPreviewUrl(null);
+      }
+
+      const match = dataUrl.match(/^data:(.+?);base64,(.*)$/);
+      const base64 = match?.[2] || null;
+      setAttachedImageBase64(base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
@@ -71,6 +112,8 @@ export default function ChatAssistant() {
     try {
       const res = await axios.post(`${API_URL}/api/ai/chat`, {
         userMessage: userText,
+        image: attachedImageBase64 || undefined,
+        mimeType: attachedMimeType || undefined,
       }, {
         timeout: 30000, // 30 second timeout
         headers: {
@@ -79,6 +122,13 @@ export default function ChatAssistant() {
       });
       const reply = res?.data?.reply || 'I am here to help!';
       setMessages((prev) => [...prev, { text: reply, sender: 'bot' }]);
+
+      if (attachedImageBase64) {
+        setAttachedPreviewUrl(null);
+        setAttachedImageBase64(null);
+        setAttachedMimeType(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
     } catch (err) {
       console.error('Chat error:', err);
       let errorMessage = 'Sorry, I encountered an error.';
@@ -139,6 +189,26 @@ export default function ChatAssistant() {
         }
         .chat-bounce {
           animation: bounce 1s infinite;
+        }
+
+        .chat-markdown {
+          white-space: normal;
+          word-break: break-word;
+        }
+        .chat-markdown h3 {
+          margin: 0 0 6px 0;
+          font-size: 13px;
+          font-weight: 700;
+        }
+        .chat-markdown p {
+          margin: 0 0 6px 0;
+        }
+        .chat-markdown ul {
+          margin: 0 0 6px 0;
+          padding-left: 18px;
+        }
+        .chat-markdown li {
+          margin: 0 0 2px 0;
         }
       `}</style>
 
@@ -246,7 +316,15 @@ export default function ChatAssistant() {
                     borderBottomRightRadius: msg.sender === 'user' ? '4px' : '16px',
                     borderBottomLeftRadius: msg.sender === 'bot' || msg.sender === 'error' ? '4px' : '16px',
                   }}>
-                    {msg.text}
+                    {msg.sender === 'bot' ? (
+                      <div className="chat-markdown">
+                        <ReactMarkdown>
+                          {msg.text}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      msg.text
+                    )}
                   </div>
                 </div>
               ))}
@@ -280,11 +358,72 @@ export default function ChatAssistant() {
               borderTop: '1px solid #e5e7eb',
               padding: '12px',
               background: '#fff',
-              display: 'flex',
-              gap: '8px',
-              alignItems: 'flex-end',
             }}>
-              <textarea
+              {attachedPreviewUrl && (
+                <div style={{
+                  marginBottom: '8px',
+                  padding: '8px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '12px',
+                  background: '#f9fafb',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-start',
+                }}>
+                  <img
+                    src={attachedPreviewUrl}
+                    alt="Attached"
+                    style={{
+                      height: '52px',
+                      width: 'auto',
+                      maxWidth: '100%',
+                      borderRadius: '8px',
+                      border: '1px solid #e5e7eb',
+                      objectFit: 'cover',
+                      background: '#fff',
+                    }}
+                  />
+                </div>
+              )}
+
+              {!attachedPreviewUrl && attachedMimeType === 'application/pdf' && attachedFileName && (
+                <div style={{
+                  marginBottom: '8px',
+                  padding: '8px 10px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '12px',
+                  background: '#f9fafb',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                }}>
+                  <div style={{
+                    fontSize: '12px',
+                    color: '#374151',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    PDF attached: <span style={{ fontWeight: 600 }}>{attachedFileName}</span>
+                  </div>
+                </div>
+              )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,application/pdf"
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+              />
+
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                alignItems: 'flex-end',
+              }}>
+                <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -308,7 +447,36 @@ export default function ChatAssistant() {
                   e.target.style.boxShadow = 'none';
                 }}
                 placeholder="Type your message..."
-              />
+                />
+
+                <button
+                  type="button"
+                  onClick={handleAttachmentClick}
+                  disabled={loading}
+                  aria-label="Attach image"
+                  style={{
+                    flexShrink: 0,
+                    background: '#fff',
+                    color: '#111827',
+                    borderRadius: '12px',
+                    padding: '10px 10px',
+                    border: '1px solid #d1d5db',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!loading) e.target.style.background = '#f9fafb';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = '#fff';
+                  }}
+                >
+                  <Paperclip size={18} />
+                </button>
+
               <button
                 onClick={sendMessage}
                 disabled={loading || !input.trim()}
@@ -335,6 +503,7 @@ export default function ChatAssistant() {
               >
                 ➤
               </button>
+              </div>
             </div>
           </div>
         )}

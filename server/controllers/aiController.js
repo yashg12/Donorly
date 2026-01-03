@@ -13,7 +13,7 @@ You are the Official Assistant for Donorly.
 
 async function getChatResponse(req, res) {
   try {
-    const { userMessage } = req.body || {};
+    const { userMessage, image, mimeType } = req.body || {};
     if (!userMessage || typeof userMessage !== 'string') {
       return res.status(400).json({ error: 'userMessage is required and must be a string' });
     }
@@ -32,9 +32,75 @@ async function getChatResponse(req, res) {
     // Use gemini-2.5-flash (the latest fast model) - it's free and available
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-    const prompt = `${SYSTEM_INSTRUCTION}\n\nUser says: ${userMessage}\n\nPlease answer helpfully and concisely following the rules above.`;
+    const hasAttachment = typeof image === 'string' && image.trim().length > 0;
 
-    const result = await model.generateContent(prompt);
+    let result;
+    if (hasAttachment) {
+      let base64Data = image.trim();
+      let resolvedMimeType = typeof mimeType === 'string' && mimeType.trim().length > 0 ? mimeType.trim() : undefined;
+
+      const dataUrlMatch = base64Data.match(/^data:(.+?);base64,(.*)$/);
+      if (dataUrlMatch) {
+        resolvedMimeType = resolvedMimeType || dataUrlMatch[1];
+        base64Data = dataUrlMatch[2];
+      }
+
+      if (!resolvedMimeType) {
+        return res.status(400).json({ error: 'mimeType is required when an image is provided' });
+      }
+      const isImage = resolvedMimeType.startsWith('image/');
+      const isPdf = resolvedMimeType === 'application/pdf';
+      if (!isImage && !isPdf) {
+        return res.status(400).json({ error: 'Only image/* or application/pdf attachments are supported' });
+      }
+      if (!base64Data || base64Data.trim().length === 0) {
+        return res.status(400).json({ error: 'Invalid image data' });
+      }
+
+      const imagePart = {
+        inlineData: {
+          data: base64Data,
+          mimeType: resolvedMimeType,
+        },
+      };
+
+      const visionInstruction = `
+    You are a careful assistant for summarizing uploaded medical reports.
+
+    Task:
+    1) Decide whether the attachment is a medical report/document (lab report, prescription, discharge summary, radiology report, etc.).
+    2) If it is a medical report, summarize it in simple non-technical language.
+    3) If it is NOT a medical report (random photo/object/pet/selfie/non-medical doc), politely refuse.
+
+    Output format: Return Markdown with EXACTLY these sections and headings:
+
+    ### Document check
+    - Medical document: Yes/No
+    - Document type: (one short phrase)
+
+    ### Summary (simple)
+    (2-5 bullet points)
+
+    ### Key findings
+    (bullets; include key values if visible)
+
+    ### Abnormal/flagged items
+    (bullets; if none, say "None clearly indicated")
+
+    ### Next steps
+    (bullets; suggest discussing with a licensed clinician)
+
+    ### Disclaimer
+    (one short paragraph: not medical advice)
+    `.trim();
+
+      const visionPrompt = `${visionInstruction}\n\nUser text (may be empty or context): ${userMessage}`;
+      result = await model.generateContent([visionPrompt, imagePart]);
+    } else {
+      const prompt = `${SYSTEM_INSTRUCTION}\n\nUser says: ${userMessage}\n\nPlease answer helpfully and concisely following the rules above.`;
+      result = await model.generateContent(prompt);
+    }
+
     const response = await result.response;
     const text = response.text();
 
