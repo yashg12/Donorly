@@ -1,0 +1,152 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Outfit', 'Inter', sans-serif;
+    @apply bg-slate-50 text-gray-900;
+  }
+}
+
+@layer utilities {
+  /* Gradient Utilities */
+  .gradient-primary {
+    @apply bg-gradient-to-r from-emerald-500 to-teal-600;
+  }
+  
+  .gradient-urgent {
+    @apply bg-gradient-to-r from-rose-500 to-red-600;
+  }
+  
+  .gradient-overlay {
+    @apply bg-gradient-to-br from-white/80 to-slate-50/80 backdrop-blur-md;
+  }
+
+  /* Shadow Utilities with Colors */
+  .shadow-emerald {
+    box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.2), 0 8px 10px -6px rgba(16, 185, 129, 0.1);
+  }
+  
+  .shadow-rose {
+    box-shadow: 0 10px 25px -5px rgba(244, 63, 94, 0.2), 0 8px 10px -6px rgba(244, 63, 94, 0.1);
+  }
+
+  /* Hover Transform */
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl;
+  }
+}
+
+/* Filter bar with modern glass effect */
+.filter-bar {
+	position: absolute;
+	top: 90px;
+	left: 20px;
+	z-index: 1100;
+	@apply bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-slate-100;
+	padding: 12px 16px;
+	display: flex;
+	gap: 12px;
+	font-family: 'Outfit', sans-serif;
+}
+
+.filter-btn {
+	@apply bg-slate-100 text-gray-700 border-none px-4 py-2 rounded-xl cursor-pointer text-sm font-semibold;
+	@apply transition-all duration-200 hover:scale-105 active:scale-95;
+}
+
+.filter-btn:hover { 
+	@apply bg-slate-200 shadow-md;
+}
+
+.filter-btn.active {
+	@apply bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30;
+}
+
+.filter-btn.requests.active { 
+	@apply bg-gradient-to-r from-rose-500 to-red-600 shadow-lg shadow-rose-500/30;
+}
+
+.filter-btn.donations.active { 
+	@apply bg-gradient-to-r from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/30;
+}
+
+/* User profile drawer with smooth animation */
+.user-drawer {
+	transform: translateX(100%);
+	animation: drawer-slide-in 0.4s cubic-bezier(.16,.68,.39,.99) forwards;
+	will-change: transform, opacity;
+	opacity: 0;
+}
+
+@keyframes drawer-slide-in {
+	0% { transform: translateX(100%); opacity:0; }
+	60% { opacity:1; }
+	100% { transform: translateX(0); opacity:1; }
+}
+
+.user-drawer.closing {
+	animation: drawer-slide-out 0.3s cubic-bezier(.4,.01,.52,.99) forwards;
+}
+
+@keyframes drawer-slide-out {
+	0% { transform: translateX(0); opacity:1; }
+	100% { transform: translateX(100%); opacity:0; }
+}
+
+/* Modern floating app header */
+.app-header {
+	position: fixed;
+	top: 16px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 90%;
+	max-width: 1400px;
+	height: 70px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 32px;
+	@apply bg-white/80 backdrop-blur-md rounded-full shadow-2xl border border-slate-100;
+	z-index: 1400;
+	font-family: 'Outfit', sans-serif;
+}
+
+.app-header .brand {
+	font-size: 24px;
+	font-weight: 800;
+	@apply bg-gradient-to-r from-emerald-500 to-teal-600 bg-clip-text text-transparent;
+}
+
+.app-header .profile-btn {
+	@apply bg-gradient-to-r from-emerald-500 to-teal-600 text-white border-none px-6 py-3 rounded-full font-bold;
+	@apply shadow-lg shadow-emerald-500/30 cursor-pointer;
+	@apply transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-xl hover:shadow-emerald-500/40;
+}
+
+/* Backdrop with blur */
+.drawer-backdrop {
+	position: fixed;
+	inset: 0;
+	@apply bg-slate-900/40 backdrop-blur-sm;
+	z-index: 1950;
+	animation: backdrop-fade-in 0.25s ease forwards;
+}
+
+@keyframes backdrop-fade-in { 
+	from { opacity: 0; } 
+	to { opacity: 1; } 
+}
+
+/* Pulsing animation for urgent items */
+@keyframes pulse-border {
+	0%, 100% { border-color: rgba(244, 63, 94, 0.3); }
+	50% { border-color: rgba(244, 63, 94, 0.8); }
+}
+
+.urgent-pulse {
+	animation: pulse-border 2s ease-in-out infinite;
+}
