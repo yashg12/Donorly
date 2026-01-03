@@ -30,3 +30,7 @@ pnpm-debug.log*
 Thumbs.db
 *.swp
 *.swo
+
+# Documents (keep repo clean)
+*.docx
+*.pdf
