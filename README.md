@@ -49,6 +49,23 @@ Frontend:
 - Set:
   - `VITE_API_URL=http://localhost:5000`
 
+## Environment Setup (Quick Reference)
+
+Create these two files locally (they are intentionally not committed):
+
+- `server/.env` (copy from `server/.env.example`)
+  - `MONGO_URI` (MongoDB connection string)
+  - `JWT_SECRET` (required)
+  - `GEMINI_API_KEY` (optional, enables AI assistant)
+  - `CLIENT_URL` (recommended; used for CORS)
+
+- `client/.env` (copy from `client/.env.example`)
+  - `VITE_API_URL` (backend base URL, e.g. `http://localhost:5000`)
+
+Notes:
+- Vite only exposes env vars prefixed with `VITE_` to the browser.
+- After changing env vars, restart the dev servers.
+
 ### 3) Run locally
 
 Backend:
@@ -56,6 +73,10 @@ Backend:
 
 Frontend:
 - `cd client && npm run dev`
+
+Alternative (from repo root):
+- `npm run server:dev`
+- `npm run client:dev`
 
 ### (Optional) Seed test data
 
@@ -74,3 +95,8 @@ This verifies:
 
 - Do **not** commit `.env` files. Only commit `.env.example`.
 - Set a strong `JWT_SECRET` before deploying.
+
+## Deployment Notes
+
+- Set `VITE_API_URL` to your deployed backend URL.
+- Set `CLIENT_URL` on the backend to your deployed frontend URL.
