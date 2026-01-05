@@ -34,3 +34,7 @@ Thumbs.db
 # Documents (keep repo clean)
 *.docx
 *.pdf
+
+# Local sample assets (do not commit)
+medical report.webp
+scripts/export_master_doc_rtf.js
