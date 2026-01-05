@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import axios from 'axios';
+import { User, Building2 } from 'lucide-react';
 import { API_URL } from './utils/api';
 
 export default function AuthPage({ initialMode = 'login' }) {
 	const [isLogin, setIsLogin] = useState(initialMode === 'login');
+	const [isNGO, setIsNGO] = useState(false);
 	const [name, setName] = useState('');
 	const [email, setEmail] = useState('');
 	const [phone, setPhone] = useState('');
+	const [ngoRegistrationNumber, setNgoRegistrationNumber] = useState('');
 	const [password, setPassword] = useState('');
 	const [showPassword, setShowPassword] = useState(false);
 	const [loading, setLoading] = useState(false);
@@ -20,12 +23,39 @@ export default function AuthPage({ initialMode = 'login' }) {
 			const endpoint = isLogin
 				? `${API_URL}/api/auth/login`
 				: `${API_URL}/api/auth/register`;
-			const payload = isLogin ? { email, password } : { name, email, phone, password };
+			const payload = isLogin
+				? { email, password }
+				: {
+					name,
+					email,
+					phone,
+					password,
+					role: isNGO ? 'ngo' : 'user',
+					...(isNGO
+						? {
+							organizationDetails: {
+								registrationNumber: ngoRegistrationNumber,
+							},
+						}
+						: {}),
+				};
 			const { data } = await axios.post(endpoint, payload);
-			localStorage.setItem('donorly_token', data.token);
-			localStorage.setItem('donorly_user', JSON.stringify(data.user));
-			alert('Success!');
-			window.location.reload();
+
+			if (isLogin) {
+				localStorage.setItem('donorly_token', data.token);
+				localStorage.setItem('donorly_user', JSON.stringify(data.user));
+				alert('Success!');
+				window.location.reload();
+			} else {
+				// After signup, force user to login (do not auto-authenticate).
+				localStorage.removeItem('donorly_token');
+				localStorage.removeItem('donorly_user');
+				localStorage.removeItem('user');
+				alert('Account created! Please log in.');
+				setIsLogin(true);
+				setPassword('');
+				setNgoRegistrationNumber('');
+			}
 		} catch (err) {
 			setError(err.response?.data?.error || 'Something went wrong');
 		} finally {
@@ -131,6 +161,44 @@ export default function AuthPage({ initialMode = 'login' }) {
 
 					<form onSubmit={handleSubmit}>
 						{!isLogin && (
+							<div className="mb-6">
+								<div className="text-sm font-semibold text-slate-700 mb-2">I am a:</div>
+								<div className="inline-flex w-full rounded-full bg-slate-100/80 p-1">
+									<button
+										type="button"
+										onClick={() => {
+											setIsNGO(false);
+											setNgoRegistrationNumber('');
+										}}
+										className={[
+											'flex-1 text-center py-2 rounded-full transition-all duration-300 active:scale-95',
+											'inline-flex items-center justify-center gap-2',
+											!isNGO
+												? 'bg-white shadow-md text-emerald-600 font-semibold'
+												: 'text-slate-500 hover:text-slate-700',
+										].join(' ')}
+									>
+										<User size={18} />
+										Individual
+									</button>
+									<button
+										type="button"
+										onClick={() => setIsNGO(true)}
+										className={[
+											'flex-1 text-center py-2 rounded-full transition-all duration-300 active:scale-95',
+											'inline-flex items-center justify-center gap-2',
+											isNGO
+												? 'bg-white shadow-md text-emerald-600 font-semibold'
+												: 'text-slate-500 hover:text-slate-700',
+										].join(' ')}
+									>
+										<Building2 size={18} />
+										NGO
+									</button>
+								</div>
+							</div>
+						)}
+						{!isLogin && (
 							<div style={{ marginBottom: '20px' }}>
 								<div style={{ position: 'relative' }}>
 									<span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: '18px' }}>👤</span>
@@ -207,6 +275,34 @@ export default function AuthPage({ initialMode = 'login' }) {
 									}}
 									onFocus={(e) => { e.target.style.borderColor = '#10b981'; e.target.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)'; }}
 									onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none'; }}
+									/>
+								</div>
+							</div>
+						)}
+
+						{!isLogin && isNGO && (
+							<div style={{ marginBottom: '20px' }}>
+								<div style={{ position: 'relative' }}>
+									<span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: '18px' }}>🏢</span>
+									<input
+										type="text"
+										placeholder="NGO Registration Number"
+										value={ngoRegistrationNumber}
+										onChange={(e) => setNgoRegistrationNumber(e.target.value)}
+										required
+										style={{
+											width: '100%',
+											padding: '14px 14px 14px 44px',
+											borderRadius: '12px',
+											border: '2px solid #e2e8f0',
+											fontSize: '15px',
+											fontFamily: 'Inter, system-ui, sans-serif',
+											outline: 'none',
+											transition: 'all 0.2s ease',
+											boxSizing: 'border-box',
+										}}
+										onFocus={(e) => { e.target.style.borderColor = '#10b981'; e.target.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)'; }}
+										onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none'; }}
 									/>
 								</div>
 							</div>

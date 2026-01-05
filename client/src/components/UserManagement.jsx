@@ -1,12 +1,19 @@
 import { useState } from 'react';
 import axios from 'axios';
-import { Pencil, Save, X } from 'lucide-react';
+import { Pencil, Save, X, Trash2, Building2 } from 'lucide-react';
 import { API_URL } from '../utils/api';
 
 export default function UserManagement({ users, onRefresh, authHeaders }) {
+	const [activeUsersTab, setActiveUsersTab] = useState('all');
 	const [editingId, setEditingId] = useState(null);
 	const [editScore, setEditScore] = useState(0);
 	const [loading, setLoading] = useState(false);
+
+	const getRole = (user) => String(user?.role || '').toLowerCase();
+
+	const visibleUsers = activeUsersTab === 'ngo'
+		? users.filter((u) => getRole(u) === 'ngo')
+		: users;
 
 	const handleEditClick = (user) => {
 		setEditingId(user._id);
@@ -58,11 +65,58 @@ export default function UserManagement({ users, onRefresh, authHeaders }) {
 		}
 	};
 
+	const handleDelete = async (user) => {
+		if (!authHeaders) {
+			alert('Missing auth token. Please login again.');
+			return;
+		}
+		const label = `${user.name} (${user.email})`;
+		if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
+
+		setLoading(true);
+		try {
+			await axios.delete(`${API_URL}/api/admin/users/${user._id}`, { headers: authHeaders });
+			alert('User deleted successfully.');
+			onRefresh();
+		} catch (err) {
+			alert(err?.response?.data?.error || 'Failed to delete user');
+		} finally {
+			setLoading(false);
+		}
+	};
+
 	return (
 		<div className="p-8">
 			<div className="mb-6">
 				<h2 className="text-3xl font-bold text-gray-900">User Control</h2>
 				<p className="text-gray-600 mt-1">Manage users and impact scores</p>
+			</div>
+
+			<div className="mb-5">
+				<div className="inline-flex rounded-full bg-gray-100 p-1 border border-gray-200">
+					<button
+						type="button"
+						onClick={() => setActiveUsersTab('all')}
+						className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+							activeUsersTab === 'all'
+								? 'bg-white text-gray-900 shadow-sm'
+								: 'text-gray-600 hover:text-gray-900'
+						}`}
+					>
+						All Users
+					</button>
+					<button
+						type="button"
+						onClick={() => setActiveUsersTab('ngo')}
+						className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+							activeUsersTab === 'ngo'
+								? 'bg-white text-gray-900 shadow-sm'
+								: 'text-gray-600 hover:text-gray-900'
+						}`}
+					>
+						NGO Verifications
+					</button>
+				</div>
 			</div>
 
 			<div className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -72,6 +126,11 @@ export default function UserManagement({ users, onRefresh, authHeaders }) {
 							<th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
 								Name
 							</th>
+							{activeUsersTab === 'ngo' && (
+								<th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+									Registration No.
+								</th>
+							)}
 							<th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
 								Email
 							</th>
@@ -90,7 +149,7 @@ export default function UserManagement({ users, onRefresh, authHeaders }) {
 						</tr>
 					</thead>
 					<tbody className="bg-white divide-y divide-gray-200">
-						{users.map((user) => (
+						{visibleUsers.map((user) => (
 							<tr key={user._id} className="hover:bg-gray-50 transition-colors">
 								<td className="px-6 py-4 whitespace-nowrap">
 									<div className="flex items-center">
@@ -98,31 +157,46 @@ export default function UserManagement({ users, onRefresh, authHeaders }) {
 											{user.name.charAt(0).toUpperCase()}
 										</div>
 										<div className="ml-4">
-											<div className="text-sm font-semibold text-gray-900">{user.name}</div>
+											<div className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+												<span>{user.name}</span>
+												<span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+													{getRole(user) === 'ngo' ? <Building2 size={12} /> : <span aria-hidden>👤</span>}
+													<span>{getRole(user) === 'ngo' ? 'NGO' : 'Individual'}</span>
+												</span>
+											</div>
 										</div>
 									</div>
 								</td>
+								{activeUsersTab === 'ngo' && (
+									<td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+										{user.organizationDetails?.registrationNumber || '—'}
+									</td>
+								)}
 								<td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
 									{user.email}
 								</td>
 								<td className="px-6 py-4 whitespace-nowrap">
 									<span className={`px-3 py-1 rounded-full text-xs font-bold ${
-										user.role === 'NGO' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+										getRole(user) === 'ngo' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
 									}`}>
-										{user.role}
+										{getRole(user) || user.role}
 									</span>
 								</td>
 								<td className="px-6 py-4 whitespace-nowrap">
-									<button
-										onClick={() => toggleVerify(user)}
-										className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
-											user.isVerified
-												? 'bg-green-100 text-green-800 hover:bg-green-200'
-												: 'bg-red-100 text-red-800 hover:bg-red-200'
-										}`}
-									>
-										{user.isVerified ? '✓ Verified' : '✗ Not Verified'}
-									</button>
+									{getRole(user) === 'ngo' ? (
+										<button
+											onClick={() => toggleVerify(user)}
+											className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+												user.isVerified
+													? 'bg-green-100 text-green-800 hover:bg-green-200'
+													: 'bg-red-100 text-red-800 hover:bg-red-200'
+											}`}
+										>
+											{user.isVerified ? '✓ Verified' : '✗ Not Verified'}
+										</button>
+									) : (
+										<span className="text-xs font-semibold text-gray-400">—</span>
+									)}
 								</td>
 								<td className="px-6 py-4 whitespace-nowrap">
 									{editingId === user._id ? (
@@ -167,14 +241,24 @@ export default function UserManagement({ users, onRefresh, authHeaders }) {
 									)}
 								</td>
 								<td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-									<span className="text-xs text-gray-400">ID: {user._id.slice(-6)}</span>
+									<div className="flex items-center justify-between gap-3">
+										<span className="text-xs text-gray-400">ID: {user._id.slice(-6)}</span>
+										<button
+											onClick={() => handleDelete(user)}
+											disabled={loading}
+											className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 transition-colors"
+											title="Delete user"
+										>
+											<Trash2 size={16} />
+										</button>
+									</div>
 								</td>
 							</tr>
 						))}
 					</tbody>
 				</table>
 
-				{users.length === 0 && (
+				{visibleUsers.length === 0 && (
 					<div className="text-center py-12 text-gray-500">
 						No users found.
 					</div>

@@ -96,7 +96,7 @@ function App() {
     return <AuthPage initialMode={showSignup ? 'signup' : 'login'} />;
   }
 
-  const canAdmin = user?.role === 'ADMIN' || (user?.email || '').toLowerCase() === 'yash@test.com';
+  const canAdmin = String(user?.role || '').toLowerCase() === 'admin' || (user?.email || '').toLowerCase() === 'yash@test.com';
 
   return (
     <div style={{ height: '100vh', width: '100vw', position: 'relative' }}>

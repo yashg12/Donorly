@@ -2,6 +2,7 @@ const express = require('express');
 const User = require('./models/User');
 const Donation = require('./models/Donation');
 const SuccessStory = require('./models/SuccessStory');
+const mongoose = require('mongoose');
 
 const router = express.Router();
 
@@ -38,8 +39,8 @@ router.get('/feedback', async (req, res) => {
 // GET /users - list NGOs and USER roles
 router.get('/users', async (req, res) => {
 	try {
-		const users = await User.find({ role: { $in: ['USER', 'NGO'] } })
-			.select('name email role isVerified impactScore');
+		const users = await User.find({ role: { $in: ['user', 'ngo', 'USER', 'NGO'] } })
+			.select('name email role isVerified impactScore organizationDetails.registrationNumber');
 		return res.json(users);
 	} catch (err) {
 		return res.status(500).json({ error: 'Failed to fetch users', details: err.message });
@@ -91,6 +92,28 @@ router.put('/verify/:id', async (req, res) => {
 		return res.json({ message: 'User verification updated', user: updated });
 	} catch (err) {
 		return res.status(500).json({ error: 'Failed to update verification', details: err.message });
+	}
+});
+
+// DELETE /users/:id - Delete a user/NGO account (admin)
+router.delete('/users/:id', async (req, res) => {
+	try {
+		const { id } = req.params;
+		if (!id) return res.status(400).json({ error: 'User id is required' });
+		if (!mongoose.isValidObjectId(id)) {
+			return res.status(400).json({ error: 'Invalid user id' });
+		}
+
+		const user = await User.findById(id).select('role email');
+		if (!user) return res.status(404).json({ error: 'User not found' });
+		if (String(user.role || '').toLowerCase() === 'admin') {
+			return res.status(403).json({ error: 'Admin accounts cannot be deleted via this endpoint' });
+		}
+
+		await User.findByIdAndDelete(id);
+		return res.json({ message: 'User deleted successfully' });
+	} catch (err) {
+		return res.status(500).json({ error: 'Failed to delete user', details: err.message });
 	}
 });
 

@@ -2,6 +2,20 @@ const mongoose = require('mongoose');
 
 const { Schema } = mongoose;
 
+const OrganizationDetailsSchema = new Schema(
+	{
+		registrationNumber: {
+			type: String,
+			trim: true,
+		},
+		address: {
+			type: String,
+			trim: true,
+		},
+	},
+	{ _id: false }
+);
+
 const UserSchema = new Schema({
 	name: {
 		type: String,
@@ -21,9 +35,13 @@ const UserSchema = new Schema({
 	},
 	role: {
 		type: String,
-		enum: ['USER', 'ADMIN', 'NGO'],
-		default: 'USER',
+		enum: ['user', 'ngo', 'admin'],
+		default: 'user',
 		required: true,
+	},
+	organizationDetails: {
+		type: OrganizationDetailsSchema,
+		required: false,
 	},
 	phone: {
 		type: String,

@@ -8,9 +8,22 @@ const router = express.Router();
 // POST /register
 router.post('/register', async (req, res) => {
 	try {
-		const { name, email, password, phone } = req.body || {};
+		const { name, email, password, phone, role, organizationDetails } = req.body || {};
 		if (!name || !email || !password) {
 			return res.status(400).json({ error: 'name, email, and password are required' });
+		}
+
+		const requestedRole = String(role || 'user').toLowerCase().trim();
+		// Security: never allow public registration as admin.
+		const safeRole = requestedRole === 'ngo' ? 'ngo' : 'user';
+		if (requestedRole !== 'user' && requestedRole !== 'ngo' && role != null) {
+			return res.status(400).json({ error: "role must be either 'user' or 'ngo'" });
+		}
+		if (requestedRole === 'ngo') {
+			const reg = organizationDetails && organizationDetails.registrationNumber;
+			if (!reg) {
+				return res.status(400).json({ error: 'organizationDetails.registrationNumber is required for ngo' });
+			}
 		}
 
 		const existing = await User.findOne({ email: email.toLowerCase().trim() });
@@ -26,15 +39,26 @@ router.post('/register', async (req, res) => {
 			email: email.toLowerCase().trim(),
 			password: hashed,
 			phone: phone?.trim(),
+			role: safeRole,
+			organizationDetails: safeRole === 'ngo'
+				? {
+					registrationNumber: String(organizationDetails.registrationNumber).trim(),
+					address: organizationDetails.address ? String(organizationDetails.address).trim() : undefined,
+				}
+				: undefined,
 		});
 
-		return res.status(201).json({ message: 'Registration successful', user: {
-			id: user._id,
-			name: user.name,
-			email: user.email,
-			role: user.role,
-			phone: user.phone,
-		}});
+		return res.status(201).json({
+			message: 'Registration successful',
+			user: {
+				id: user._id,
+				name: user.name,
+				email: user.email,
+				role: user.role,
+				phone: user.phone,
+				organizationDetails: user.organizationDetails,
+			},
+		});
 	} catch (err) {
 		return res.status(500).json({ error: 'Registration failed', details: err.message });
 	}
