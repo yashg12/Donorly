@@ -1,10 +1,18 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { Trash2, AlertTriangle } from 'lucide-react';
-import { API_URL } from '../utils/api';
+import { API_URL, handleAuthExpiry } from '../utils/api';
 
 export default function FeedbackModeration({ stories, onRefresh, authHeaders }) {
 	const [deleting, setDeleting] = useState(null);
+
+	const forceReLogin = (message = 'Session expired. Please log in again.') => {
+		alert(message);
+		localStorage.removeItem('donorly_token');
+		localStorage.removeItem('donorly_user');
+		localStorage.removeItem('user');
+		setTimeout(() => window.location.reload(), 250);
+	};
 
 	// Filter only valid success stories (must have userName and story fields)
 	const validStories = stories.filter(s => s.userName && s.story && s.userEmail);
@@ -17,13 +25,17 @@ export default function FeedbackModeration({ stories, onRefresh, authHeaders }) 
 		setDeleting(storyId);
 		try {
 			if (!authHeaders) {
-				alert('Missing auth token. Please login again.');
+				forceReLogin('Missing auth token. Please log in again.');
 				return;
 			}
 			await axios.delete(`${API_URL}/api/admin/feedback/${storyId}`, { headers: authHeaders });
 			alert('Success story deleted successfully');
 			onRefresh();
 		} catch (err) {
+			if (handleAuthExpiry(err)) {
+				forceReLogin();
+				return;
+			}
 			alert(err?.response?.data?.error || 'Failed to delete story');
 		} finally {
 			setDeleting(null);

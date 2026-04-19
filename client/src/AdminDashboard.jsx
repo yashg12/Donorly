@@ -4,7 +4,7 @@ import AdminLayout from './components/AdminLayout';
 import DashboardStats from './components/DashboardStats';
 import UserManagement from './components/UserManagement';
 import FeedbackModeration from './components/FeedbackModeration';
-import { API_URL, getAuthHeaders } from './utils/api';
+import { API_URL, getAuthHeaders, handleAuthExpiry } from './utils/api';
 
 export default function AdminDashboard({ onClose }) {
 	const [activeTab, setActiveTab] = useState('dashboard');
@@ -16,18 +16,33 @@ export default function AdminDashboard({ onClose }) {
 
 	const authHeaders = getAuthHeaders();
 
+	const forceReLogin = (message = 'Session expired. Please log in again.') => {
+		setError(message);
+		// Clear tokens and bounce back to auth flow.
+		localStorage.removeItem('donorly_token');
+		localStorage.removeItem('donorly_user');
+		localStorage.removeItem('user');
+		if (onClose) onClose();
+		setTimeout(() => window.location.reload(), 250);
+	};
+
 	// Fetch dashboard stats
 	const loadStats = async () => {
 		try {
 			setError('');
-			if (!authHeaders) {
-				setError('Missing auth token. Please login again.');
+			const headers = getAuthHeaders();
+			if (!headers) {
+				forceReLogin('Missing auth token. Please log in again.');
 				return;
 			}
-			const res = await axios.get(`${API_URL}/api/admin/stats`, { headers: authHeaders });
+			const res = await axios.get(`${API_URL}/api/admin/stats`, { headers });
 			setStats(res.data || {});
 		} catch (err) {
 			console.error('Failed to load stats:', err);
+			if (handleAuthExpiry(err)) {
+				forceReLogin();
+				return;
+			}
 			setError(err?.response?.data?.error || 'Failed to load statistics');
 		}
 	};
@@ -37,13 +52,18 @@ export default function AdminDashboard({ onClose }) {
 		try {
 			setLoading(true);
 			setError('');
-			if (!authHeaders) {
-				setError('Missing auth token. Please login again.');
+			const headers = getAuthHeaders();
+			if (!headers) {
+				forceReLogin('Missing auth token. Please log in again.');
 				return;
 			}
-			const res = await axios.get(`${API_URL}/api/admin/users`, { headers: authHeaders });
+			const res = await axios.get(`${API_URL}/api/admin/users`, { headers });
 			setUsers(res.data || []);
 		} catch (err) {
+			if (handleAuthExpiry(err)) {
+				forceReLogin();
+				return;
+			}
 			setError(err?.response?.data?.error || 'Failed to load users');
 			console.error('Failed to load users:', err);
 		} finally {
@@ -56,13 +76,18 @@ export default function AdminDashboard({ onClose }) {
 		try {
 			setLoading(true);
 			setError('');
-			if (!authHeaders) {
-				setError('Missing auth token. Please login again.');
+			const headers = getAuthHeaders();
+			if (!headers) {
+				forceReLogin('Missing auth token. Please log in again.');
 				return;
 			}
-			const res = await axios.get(`${API_URL}/api/admin/feedback`, { headers: authHeaders });
+			const res = await axios.get(`${API_URL}/api/admin/feedback`, { headers });
 			setStories(res.data || []);
 		} catch (err) {
+			if (handleAuthExpiry(err)) {
+				forceReLogin();
+				return;
+			}
 			setError(err?.response?.data?.error || 'Failed to load feedback');
 			console.error('Failed to load feedback:', err);
 		} finally {

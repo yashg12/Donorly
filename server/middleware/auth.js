@@ -7,8 +7,20 @@ function requireAuth(req, res, next) {
 			return res.status(401).json({ error: 'Missing Authorization header' });
 		}
 
-		const [scheme, token] = String(header).split(' ');
-		if (scheme !== 'Bearer' || !token) {
+		const raw = String(header).trim();
+		let token = null;
+		if (raw.includes(' ')) {
+			const [scheme, ...rest] = raw.split(/\s+/);
+			if (String(scheme || '').toLowerCase() !== 'bearer' || rest.length === 0) {
+				return res.status(401).json({ error: 'Invalid Authorization header format' });
+			}
+			token = rest.join(' ').trim();
+		} else {
+			// Tolerate clients that send just the token.
+			token = raw;
+		}
+
+		if (!token) {
 			return res.status(401).json({ error: 'Invalid Authorization header format' });
 		}
 

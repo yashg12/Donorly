@@ -106,7 +106,7 @@ export default function MapBoard() {
 					console.warn('Geolocation failed, using default Pune center.', err);
 					fetchDonations(position, 25000); // fallback with 25km radius
 				},
-				{ enableHighAccuracy: true, timeout: 10000 }
+				{ enableHighAccuracy: false, timeout: 6000, maximumAge: 300000 }
 			);
 		} else {
 			// No geolocation support

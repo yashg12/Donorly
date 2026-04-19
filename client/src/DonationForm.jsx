@@ -104,7 +104,7 @@ setLocLoading(false);
 alert('Location found!');
 };
 
-const onError = (err) => {
+const onError = async (err) => {
 console.error('Geolocation error', err);
 const code = err?.code;
 const PERMISSION_DENIED = err?.PERMISSION_DENIED ?? 1;
@@ -114,12 +114,17 @@ const TIMEOUT = err?.TIMEOUT ?? 3;
 // Many desktops fail high-accuracy GPS; try the opposite order:
 // 1) coarse (more reliable) 2) high accuracy (if available)
 if (code === POSITION_UNAVAILABLE || code === TIMEOUT) {
+	// First, try a quick IP-based approximate location (fast and often good enough).
+	const usedIp = await tryIpLocationFallback();
+	if (usedIp) return;
+
 navigator.geolocation.getCurrentPosition(
 onSuccess,
 async (err2) => {
 console.error('Geolocation high-accuracy fallback error', err2);
- const usedFallback = await tryIpLocationFallback();
- if (usedFallback) return;
+		// As a last resort, retry IP fallback once more (network conditions may change).
+		const usedFallback = await tryIpLocationFallback();
+		if (usedFallback) return;
  setLocLoading(false);
  showError?.(
  'Location position unavailable. Enable Location Services (Windows Settings) and allow location permission in the browser, then try again.'
@@ -128,7 +133,7 @@ console.error('Geolocation high-accuracy fallback error', err2);
  'Location position unavailable. Enable Location Services (Windows Settings) and allow location permission in the browser, then try again.'
  );
 },
-{ enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
+{ enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
 );
 return;
 }
@@ -148,8 +153,8 @@ showError?.(msg) || alert(msg);
 // Coarse first: more reliable on laptops/desktops.
 navigator.geolocation.getCurrentPosition(onSuccess, onError, {
 enableHighAccuracy: false,
-timeout: 20000,
-maximumAge: 60000,
+timeout: 8000,
+maximumAge: 300000,
 });
 }
 

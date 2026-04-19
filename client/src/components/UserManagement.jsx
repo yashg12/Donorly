@@ -1,13 +1,21 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { Pencil, Save, X, Trash2, Building2 } from 'lucide-react';
-import { API_URL } from '../utils/api';
+import { API_URL, handleAuthExpiry } from '../utils/api';
 
 export default function UserManagement({ users, onRefresh, authHeaders }) {
 	const [activeUsersTab, setActiveUsersTab] = useState('all');
 	const [editingId, setEditingId] = useState(null);
 	const [editScore, setEditScore] = useState(0);
 	const [loading, setLoading] = useState(false);
+
+	const forceReLogin = (message = 'Session expired. Please log in again.') => {
+		alert(message);
+		localStorage.removeItem('donorly_token');
+		localStorage.removeItem('donorly_user');
+		localStorage.removeItem('user');
+		setTimeout(() => window.location.reload(), 250);
+	};
 
 	const getRole = (user) => String(user?.role || '').toLowerCase();
 
@@ -24,7 +32,7 @@ export default function UserManagement({ users, onRefresh, authHeaders }) {
 		setLoading(true);
 		try {
 			if (!authHeaders) {
-				alert('Missing auth token. Please login again.');
+				forceReLogin('Missing auth token. Please log in again.');
 				return;
 			}
 			await axios.put(
@@ -36,6 +44,10 @@ export default function UserManagement({ users, onRefresh, authHeaders }) {
 			onRefresh();
 			alert('Impact score updated successfully!');
 		} catch (err) {
+			if (handleAuthExpiry(err)) {
+				forceReLogin();
+				return;
+			}
 			alert(err?.response?.data?.error || 'Failed to update score');
 		} finally {
 			setLoading(false);
@@ -51,7 +63,7 @@ export default function UserManagement({ users, onRefresh, authHeaders }) {
 		const newStatus = !user.isVerified;
 		try {
 			if (!authHeaders) {
-				alert('Missing auth token. Please login again.');
+				forceReLogin('Missing auth token. Please log in again.');
 				return;
 			}
 			await axios.put(
@@ -61,13 +73,17 @@ export default function UserManagement({ users, onRefresh, authHeaders }) {
 			);
 			onRefresh();
 		} catch (err) {
+			if (handleAuthExpiry(err)) {
+				forceReLogin();
+				return;
+			}
 			alert(err?.response?.data?.error || 'Failed to update verification');
 		}
 	};
 
 	const handleDelete = async (user) => {
 		if (!authHeaders) {
-			alert('Missing auth token. Please login again.');
+			forceReLogin('Missing auth token. Please log in again.');
 			return;
 		}
 		const label = `${user.name} (${user.email})`;
@@ -79,6 +95,10 @@ export default function UserManagement({ users, onRefresh, authHeaders }) {
 			alert('User deleted successfully.');
 			onRefresh();
 		} catch (err) {
+			if (handleAuthExpiry(err)) {
+				forceReLogin();
+				return;
+			}
 			alert(err?.response?.data?.error || 'Failed to delete user');
 		} finally {
 			setLoading(false);
